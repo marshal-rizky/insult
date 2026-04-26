@@ -1,5 +1,6 @@
 import sys
 import json
+import re
 import subprocess
 import os
 
@@ -20,22 +21,25 @@ def analyze(filepath):
     commit_msg = "Unknown"
     
     try:
-        dirname = os.path.dirname(os.path.abspath(filepath))
-        # Ensure it works cross-platform with basic text extraction
-        blame_out = subprocess.run(["git", "blame", "-l", "-L", "1,1", filepath], cwd=dirname, capture_output=True, text=True).stdout
+        filepath_abs = os.path.abspath(filepath)
+        dirname = os.path.dirname(filepath_abs)
+        # Ensure it works cross-platform with basic regex extraction
+        blame_out = subprocess.run(["git", "blame", "-l", "-L", "1,1", filepath_abs], cwd=dirname, capture_output=True, text=True, check=True).stdout
         if blame_out:
             parts = blame_out.split()
             if len(parts) > 0:
                 commit_hash = parts[0]
-                author_start = blame_out.find('(') + 1
-                author_end = blame_out.find(' 202', author_start)
-                if author_end != -1:
-                    author = blame_out[author_start:author_end].strip()
                 
-                log_out = subprocess.run(["git", "log", "-1", "--format=%B", commit_hash], cwd=dirname, capture_output=True, text=True).stdout
+                match = re.search(r'\((.*?)\s+\d{4}-\d{2}-\d{2}', blame_out)
+                if match:
+                    author = match.group(1).strip()
+                
+                log_out = subprocess.run(["git", "log", "-1", "--format=%B", commit_hash], cwd=dirname, capture_output=True, text=True, check=True).stdout
                 commit_msg = log_out.strip()
-    except Exception:
-        pass
+    except subprocess.CalledProcessError as e:
+        print(json.dumps({"error": f"Git subprocess failed: {str(e)}"}), file=sys.stderr)
+    except Exception as e:
+        print(json.dumps({"error": f"Internal parsing error: {str(e)}"}), file=sys.stderr)
 
     output = {
         "lines_of_code": loc,
