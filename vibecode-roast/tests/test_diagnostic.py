@@ -16,8 +16,11 @@ def test_diagnostic_output():
     except json.JSONDecodeError:
         assert False, f"Failed to parse JSON. stdout: {result.stdout}, stderr: {result.stderr}"
         
-    assert "lines_of_code" in data
-    assert "vibecode_score" in data
+    assert "scope" in data
+    assert "total_files" in data
+    assert "total_loc" in data
+    assert "languages" in data
+    assert "worst_offender" in data
     print("Test passed!")
 
 if __name__ == "__main__":
